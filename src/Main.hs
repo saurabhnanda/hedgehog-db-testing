@@ -95,10 +95,10 @@ withPool action = do
     10                          -- number of connections per stripe
   C.finally (action pool) (Pool.destroyAllResources pool)
 
--- | Very important function, which prepares the environment a `TestM` action
--- (basically takes a new connection from the DB pool), runs the action with
--- that DB connectiom, and ROLLS IT BACK, so that the DB is left in a pristine
--- state for subsequent tests/properties.
+-- | Very important function, which prepares the environment for a `TestM`
+-- action (basically takes a new connection from the DB pool), runs the action
+-- with that DB connectiom, and ROLLS IT BACK, so that the DB is left in a
+-- pristine state for subsequent tests/properties.
 withRollback :: Pool Connection -> TestM a -> IO a
 withRollback pool action = Pool.withResource pool $ \conn ->
     let env = Env { envDbConnection = conn }
