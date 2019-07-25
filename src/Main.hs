@@ -63,14 +63,17 @@ data Env = Env
 class (MonadIO m) => HasDatabase m where
   getDbConnection :: m Connection
 
-instance HasDatabase TestM where
-  getDbConnection = envDbConnection <$> ask
 
 
 -- | The app monad, which is called TestM in this case, but it will implement
 -- the HasDatabase type-class below
 newtype TestM a = TestM (ReaderT Env IO a)
   deriving (MonadIO, Monad, Functor, Applicative, MonadMask, MonadThrow, MonadUnliftIO, MonadCatch, MonadReader Env)
+
+
+-- | HasDatabase implementation for TestM
+instance HasDatabase TestM where
+  getDbConnection = envDbConnection <$> ask
 
 -- | Helper to unwrap the `TestM` newtype and run the ReaderT action embedded
 -- inside it. I prefer flipping the order of arguments around.
