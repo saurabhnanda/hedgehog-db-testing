@@ -142,6 +142,9 @@ createUser UserPoly{userName, userEmail} = do
 -- where the id/primary-key is kep separate from the core value. This is just
 -- for demonstration; my codebase uses the Opaleye/Beam style demonstrated with
 -- the `User` type above. The `Post` type represents an unsaved post.
+--
+-- Also, please note, that even to create an UNSAVED post, one needs the ID of a
+-- SAVED user, due to FK constraints.
 data Post = Post
   { postUserId :: Int
   , postTitle :: Text
