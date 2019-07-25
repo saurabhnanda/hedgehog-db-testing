@@ -1,6 +1,7 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances, NamedFieldPuns, LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE ApplicativeDo, GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances, NamedFieldPuns, LambdaCase, OverloadedStrings #-}
 module Main where
 
+import Control.Monad.Morph (hoist)
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -174,29 +175,47 @@ createPost Post{postUserId, postTitle, postBody} = do
 randomUser :: (MonadGen m) => m NewUser
 randomUser = UserPoly <$> (pure ()) <*> (Gen.text (Range.constant 1 100) Gen.unicodeAll) <*> (Gen.text (Range.constant 1 100) Gen.unicodeAll)
 
+newtype CreatePost = CreatePost { unCreatePost :: User -> Post }
+
+instance Show CreatePost where
+  showsPrec p x =
+    showsPrec p (unCreatePost x (UserPoly 0 "" ""))
+
 -- | Function to generate a randomg UNSAVED post. However, please note, that
 -- this requires a SAVED User to be passed-in because `postUserId` is a
 -- required, non-nullable FK field.
-randomPost :: (MonadGen m) => User -> m Post
-randomPost UserPoly{userId} = Post <$> (pure userId) <*> (Gen.text (Range.constant 1 100) Gen.unicodeAll) <*> (Gen.text (Range.constant 1 100) Gen.unicodeAll)
-
+randomPost :: (MonadGen m) => m CreatePost
+randomPost = do
+  title <- Gen.text (Range.constant 1 100) Gen.unicodeAll
+  body <- Gen.text (Range.constant 1 100) Gen.unicodeAll
+  -- note you don't actually need the whole user here,
+  -- maybe having a UserId newtype would be better
+  pure . CreatePost $ \UserPoly{userId} ->
+    Post userId title body
 
 -- | This is the kind of test I am trying to write, but I have commented it out,
 -- because it is not compiling. The uncommented code below is just boilerplate
 -- to get the entire file to compile.
 --
--- myProperty :: Pool Connection -> TestTree
--- myProperty pool = testProperty "My property" $ property $ withRollback pool $ do
---   newuser <- forAll randomUser
---   user <- createUser newuser
---   newpost <- forAll $ randomgPost user
---   post <- createPost newpost
---   True === True
-myProperty :: Pool Connection -> TestTree
-myProperty pool = testProperty "My property" $ property $ pure ()
+myTestTree :: Pool Connection -> TestTree
+myTestTree pool =
+  testProperty "My property" $ myProperty pool
+
+myProperty :: Pool Connection -> Property
+myProperty pool =
+  property . hoist (withRollback pool) $ do
+   newuser <- forAll randomUser
+   newpost <- forAll randomPost
+   -- evalM is a bit like a specialized 'try' or 'handle', will cause any
+   -- exception thrown in the thing it is evaluating to be to be located to the
+   -- 'evalM' line rather than just the property as a whole.
+   user <- evalM . lift $ createUser newuser
+   post <- evalM . lift $ createPost (unCreatePost newpost user)
+   True === True
+--myProperty :: Pool Connection -> TestTree
+--myProperty pool = testProperty "My property" $ property $ pure ()
 
 
--- | main-related boilerplate. 
+-- | main-related boilerplate.
 main :: IO ()
-main = withPool $ \pool -> defaultMain $ testGroup "All tests" [myProperty pool]
-
+main = withPool $ \pool -> defaultMain $ testGroup "All tests" [myTestTree pool]

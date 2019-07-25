@@ -19,12 +19,13 @@ dependencies:
   - text
   - resource-pool
   - mtl
+  - mmorph
   - tasty
   - tasty-hedgehog
   - exceptions
   - unliftio
   - lifted-base
-  
+
 executables:
   hedgehog-db-testing:
     source-dirs:      src
