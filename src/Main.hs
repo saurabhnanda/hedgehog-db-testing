@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances, NamedFieldPuns, LambdaCase, OverloadedStrings #-}
 module Main where
 
+import Control.Monad.Morph (hoist)
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -185,18 +186,22 @@ randomPost UserPoly{userId} = Post <$> (pure userId) <*> (Gen.text (Range.consta
 -- because it is not compiling. The uncommented code below is just boilerplate
 -- to get the entire file to compile.
 --
--- myProperty :: Pool Connection -> TestTree
--- myProperty pool = testProperty "My property" $ property $ withRollback pool $ do
---   newuser <- forAll randomUser
---   user <- createUser newuser
---   newpost <- forAll $ randomgPost user
---   post <- createPost newpost
---   True === True
-myProperty :: Pool Connection -> TestTree
-myProperty pool = testProperty "My property" $ property $ pure ()
+myTestTree :: Pool Connection -> TestTree
+myTestTree pool =
+  testProperty "My property" $ myProperty pool
+
+myProperty :: Pool Connection -> Property
+myProperty pool =
+  property . hoist (withRollback pool) $ do
+   newuser <- forAll randomUser
+   user <- lift $ createUser newuser
+   newpost <- forAll $ randomPost user
+   post <- lift $ createPost newpost
+   True === True
+--myProperty :: Pool Connection -> TestTree
+--myProperty pool = testProperty "My property" $ property $ pure ()
 
 
--- | main-related boilerplate. 
+-- | main-related boilerplate.
 main :: IO ()
-main = withPool $ \pool -> defaultMain $ testGroup "All tests" [myProperty pool]
-
+main = withPool $ \pool -> defaultMain $ testGroup "All tests" [myTestTree pool]
