@@ -152,7 +152,7 @@ data Post = Post
   } deriving (Eq, Show)
 
 -- | A newtype which represents a Post that has been saved to the DB. It
--- basically types the id/primary-key along with the Post value.
+-- basically ties-together the id/primary-key along with the Post value.
 newtype PostEntity = PostEntity (Int, Post) deriving (Eq, Show)
 
 -- | Pg-simple boilerplate
@@ -175,8 +175,8 @@ randomUser :: (MonadGen m) => m NewUser
 randomUser = UserPoly <$> (pure ()) <*> (Gen.text (Range.constant 1 100) Gen.unicodeAll) <*> (Gen.text (Range.constant 1 100) Gen.unicodeAll)
 
 -- | Function to generate a randomg UNSAVED post. However, please note, that
--- this requires a saved User to be passed-in because `postUserId` is a
--- required, non-nullable field.
+-- this requires a SAVED User to be passed-in because `postUserId` is a
+-- required, non-nullable FK field.
 randomPost :: (MonadGen m) => User -> m Post
 randomPost UserPoly{userId} = Post <$> (pure userId) <*> (Gen.text (Range.constant 1 100) Gen.unicodeAll) <*> (Gen.text (Range.constant 1 100) Gen.unicodeAll)
 
