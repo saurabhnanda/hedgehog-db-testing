@@ -13,7 +13,18 @@ extra-source-files:
 
 dependencies:
   - base >= 4.7 && < 5
-
+  - hedgehog
+  - postgresql-simple
+  - containers
+  - text
+  - resource-pool
+  - mtl
+  - tasty
+  - tasty-hedgehog
+  - exceptions
+  - unliftio
+  - lifted-base
+  
 executables:
   hedgehog-db-testing:
     source-dirs:      src
